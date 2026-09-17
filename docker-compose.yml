@@ -1,0 +1,47 @@
+services:
+  ppms:
+    build: .
+    container_name: ppms-app
+    ports:
+      - "3088:3088"
+    environment:
+      PORT: "3088"
+      # Database: SQLite di volume terpisah (/data) — schema.prisma selalu versi terbaru dari image
+      DATABASE_URL: "file:/data/dev.db"
+      NEXTAUTH_URL: "http://localhost:3088"
+      NEXTAUTH_SECRET: "ppms-docker-secret-ganti-di-produksi"
+      UPLOAD_DIR: "./storage/project-documents"
+      MAX_UPLOAD_MB: "25"
+      # Akun login awal (dibuat/di-reset otomatis saat container start):
+      SEED_EMAIL: "admin@ppms.local"
+      SEED_PASSWORD: "admin123"
+      SEED_NAME: "Owner"
+    volumes:
+      # Database & file upload bertahan walau container di-recreate
+      - ppms_db:/data
+      - ppms_storage:/app/storage/project-documents
+    restart: unless-stopped
+
+volumes:
+  ppms_db:
+  ppms_storage:
+
+# ── Opsi MySQL (produksi) ────────────────────────────────────────────
+# Ganti provider di prisma/schema.prisma menjadi "mysql", lalu tambahkan:
+#
+#  mysql:
+#    image: mysql:8
+#    environment:
+#      MYSQL_DATABASE: ppms
+#      MYSQL_USER: ppms_user
+#      MYSQL_PASSWORD: ganti_password_kuat
+#      MYSQL_ROOT_PASSWORD: ganti_root_password
+#    volumes:
+#      - ppms_mysql:/var/lib/mysql
+#
+# dan ubah environment ppms:
+#      DATABASE_URL: "mysql://ppms_user:ganti_password_kuat@mysql:3306/ppms"
+#      NEXTAUTH_URL: "https://ppms.domain-anda.com"
+#
+# volumes:
+#  ppms_mysql:
