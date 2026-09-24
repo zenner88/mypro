@@ -47,19 +47,37 @@ async function main() {
   if (existing) {
     await db.user.update({
       where: { email },
-      data: { passwordHash, name },
+      data: {
+        passwordHash,
+        name,
+        role: "ADMIN",
+        plan: "PRO",
+        maxProjects: 9999,
+        maxInvoices: 9999,
+      },
     });
     console.log(`✅ Akun diperbarui : ${email}`);
     console.log(`   Nama            : ${name}`);
+    console.log(`   Role / Plan     : ADMIN / PRO (Unlimited)`);
     console.log(`   Password        : (sesuai yang diberikan)`);
   } else {
     // Jika database masih kosong, akun ini menjadi owner pertama.
     const total = await db.user.count();
     await db.user.create({
-      data: { email, passwordHash, name, phone: null },
+      data: {
+        email,
+        passwordHash,
+        name,
+        role: "ADMIN",
+        plan: "PRO",
+        maxProjects: 9999,
+        maxInvoices: 9999,
+        phone: null,
+      },
     });
     console.log(`✅ Akun login dibuat${total === 0 ? " (owner pertama)" : ""}: ${email}`);
     console.log(`   Nama            : ${name}`);
+    console.log(`   Role / Plan     : ADMIN / PRO (Unlimited)`);
   }
 
   console.log("");

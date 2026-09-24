@@ -44,6 +44,17 @@ export const authOptions: NextAuthOptions = {
         token.plan = user.plan;
         token.maxProjects = user.maxProjects;
         token.maxInvoices = user.maxInvoices;
+      } else if (token.id) {
+        const freshUser = await db.user.findUnique({
+          where: { id: token.id as string },
+          select: { role: true, plan: true, maxProjects: true, maxInvoices: true },
+        });
+        if (freshUser) {
+          token.role = freshUser.role;
+          token.plan = freshUser.plan;
+          token.maxProjects = freshUser.maxProjects;
+          token.maxInvoices = freshUser.maxInvoices;
+        }
       }
       return token;
     },
