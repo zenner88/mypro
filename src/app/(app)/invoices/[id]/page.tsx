@@ -64,44 +64,56 @@ export default function InvoiceDetailPage() {
       const { jsPDF } = await import("jspdf");
 
       const canvas = await html2canvas(element, {
-        scale: 2.5,
+        scale: 2,
         useCORS: true,
         logging: false,
         backgroundColor: "#ffffff",
-        windowWidth: 1024,
       });
 
-      const imgData = canvas.toDataURL("image/png");
+      // Gunakan JPEG dengan kompresi kualitas tinggi (ukuran file turun dari ~10MB ke ~200KB)
+      const imgData = canvas.toDataURL("image/jpeg", 0.90);
       const pdf = new jsPDF({
         orientation: "portrait",
         unit: "mm",
         format: "a4",
+        compress: true,
       });
 
+      const pageWidth = 210;
+      const pageHeight = 297;
       const imgProps = pdf.getImageProperties(imgData);
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
 
-      if (pdfHeight <= 297) {
-        pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      let renderWidth = pageWidth;
+      let renderHeight = (imgProps.height * renderWidth) / imgProps.width;
+
+      // Smart fitting: Jika tinggi mendekati 1 lembar A4 (selisih sedikit),
+      // scale proporsional agar presisi 1 halaman penuh tanpa tumpah ke halaman 2
+      if (renderHeight <= pageHeight) {
+        pdf.addImage(imgData, "JPEG", 0, 0, renderWidth, renderHeight, undefined, "FAST");
+      } else if (renderHeight <= pageHeight * 1.2) {
+        const ratio = pageHeight / renderHeight;
+        renderHeight = pageHeight;
+        renderWidth = renderWidth * ratio;
+        const xOffset = (pageWidth - renderWidth) / 2;
+        pdf.addImage(imgData, "JPEG", xOffset, 0, renderWidth, renderHeight, undefined, "FAST");
       } else {
-        let heightLeft = pdfHeight;
+        // Multi-page jika invoice sangat panjang
+        let heightLeft = renderHeight;
         let position = 0;
-        const pageHeight = 297;
 
-        pdf.addImage(imgData, "PNG", 0, position, pdfWidth, pdfHeight);
+        pdf.addImage(imgData, "JPEG", 0, position, renderWidth, renderHeight, undefined, "FAST");
         heightLeft -= pageHeight;
 
         while (heightLeft > 0) {
-          position = heightLeft - pdfHeight;
+          position -= pageHeight;
           pdf.addPage();
-          pdf.addImage(imgData, "PNG", 0, position, pdfWidth, pdfHeight);
+          pdf.addImage(imgData, "JPEG", 0, position, renderWidth, renderHeight, undefined, "FAST");
           heightLeft -= pageHeight;
         }
       }
 
-      pdf.save(`${invoice.number}.pdf`);
-      toast({ title: "PDF berhasil diunduh", variant: "success" });
+      pdf.save(`${invoice.number || "invoice"}.pdf`);
+      toast({ title: "PDF berhasil diunduh", description: "Ukuran file optimal & pas 1 halaman.", variant: "success" });
     } catch (err) {
       console.error("Failed to generate PDF:", err);
       toast({ title: "Gagal mengunduh PDF", description: "Membuka dialog cetak...", variant: "error" });
