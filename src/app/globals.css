@@ -51,17 +51,58 @@
 
 /* ===== Invoice / print A4 ===== */
 @media print {
-  body * { visibility: hidden; }
-  .print-area, .print-area * { visibility: visible; }
-  .print-area {
-    position: absolute;
-    inset: 0;
-    width: 210mm;
-    min-height: 297mm;
-    margin: 0;
-    padding: 14mm 16mm;
-    box-shadow: none;
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
   }
-  @page { size: A4; margin: 0; }
-  .no-print { display: none !important; }
+
+  html, body {
+    background: #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide navigation, header, buttons */
+  .no-print,
+  header,
+  aside,
+  nav,
+  button,
+  [role="dialog"] {
+    display: none !important;
+  }
+
+  /* Reset layout constraints from AppLayout */
+  .lg\:pl-64,
+  div:has(> .print-area),
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border: none !important;
+  }
+
+  .print-area {
+    visibility: visible !important;
+    position: relative !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Ensure table borders and zebra striping print cleanly */
+  table, tr, td, th {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
 }

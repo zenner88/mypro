@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
-  ArrowLeft, Printer, Copy, CheckCircle2, Ban, Send, Wallet, Plus, Trash2, X,
+  ArrowLeft, Printer, Copy, CheckCircle2, Ban, Send, Wallet, Plus, Trash2, X, Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +40,7 @@ export default function InvoiceDetailPage() {
   const [payAmount, setPayAmount] = React.useState("");
   const [payMethod, setPayMethod] = React.useState("BANK_TRANSFER");
   const [saving, setSaving] = React.useState(false);
+  const [downloading, setDownloading] = React.useState(false);
 
   function load() {
     fetch(`/api/invoices/${id}`).then((r) => r.json()).then(setInvoice).catch(() => {});
@@ -52,6 +53,63 @@ export default function InvoiceDetailPage() {
   }
 
   const outstanding = Number(invoice.total) - Number(invoice.amountPaid);
+
+  async function handleDownloadPdf() {
+    if (!invoice) return;
+    const element = document.getElementById("invoice-print-area");
+    if (!element) return;
+    setDownloading(true);
+    try {
+      const html2canvas = (await import("html2canvas")).default;
+      const { jsPDF } = await import("jspdf");
+
+      const canvas = await html2canvas(element, {
+        scale: 2.5,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+        windowWidth: 1024,
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+      if (pdfHeight <= 297) {
+        pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      } else {
+        let heightLeft = pdfHeight;
+        let position = 0;
+        const pageHeight = 297;
+
+        pdf.addImage(imgData, "PNG", 0, position, pdfWidth, pdfHeight);
+        heightLeft -= pageHeight;
+
+        while (heightLeft > 0) {
+          position = heightLeft - pdfHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, "PNG", 0, position, pdfWidth, pdfHeight);
+          heightLeft -= pageHeight;
+        }
+      }
+
+      pdf.save(`${invoice.number}.pdf`);
+      toast({ title: "PDF berhasil diunduh", variant: "success" });
+    } catch (err) {
+      console.error("Failed to generate PDF:", err);
+      toast({ title: "Gagal mengunduh PDF", description: "Membuka dialog cetak...", variant: "error" });
+      window.print();
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   async function action(body: Record<string, unknown>, successMsg: string) {
     setSaving(true);
@@ -96,7 +154,17 @@ export default function InvoiceDetailPage() {
             {formatIDR(invoice.amountPaid)} / {formatIDR(invoice.total)} dibayar ({paidPct}%)
           </span>
           <div className="ml-auto flex flex-wrap gap-2">
-            <Button variant="outline" onClick={() => window.print()}><Printer /> Print / PDF</Button>
+            <Button
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-sm"
+              onClick={handleDownloadPdf}
+              disabled={downloading}
+            >
+              <Download className="h-4 w-4 mr-1.5" />
+              {downloading ? "Mengunduh PDF..." : "Download PDF"}
+            </Button>
+            <Button variant="outline" onClick={() => window.print()} title="Print dokumen langsung">
+              <Printer className="h-4 w-4 mr-1.5" /> Print
+            </Button>
             <Button variant="outline" onClick={() => action({ action: "duplicate" }, "Invoice diduplikasi")}>
               <Copy /> Duplicate
             </Button>
@@ -128,7 +196,7 @@ export default function InvoiceDetailPage() {
       </div>
 
       {/* ===== A4 Invoice ===== */}
-      <div className="print-area mx-auto max-w-[210mm] border bg-white p-12 text-slate-900 shadow-sm">
+      <div id="invoice-print-area" className="print-area mx-auto max-w-[210mm] border bg-white p-12 text-slate-900 shadow-sm">
         {/* Header */}
         <div className="flex items-start justify-between border-b-2 border-slate-900 pb-6">
           <div>
